@@ -141,20 +141,32 @@ impl Snake {
 
     fn update(&mut self, just_ate: bool, cols: u32, rows:u32) -> bool {
         let mut head = (*self.body.front().expect("Snake has no head!")).clone();
-        
-        // Return false if the move is invalid
-        if (self.direction == Direction::Up && head.1 == 0) ||
-           (self.direction == Direction::Down && head.1 == rows) ||
-           (self.direction == Direction::Left && head.0 == 0) ||
-           (self.direction == Direction::Right && head.0 == cols) {
-              return false;
-        }
 
         match self.direction {
-            Direction::Left => head.0 -= 1,
-            Direction::Right => head.0 += 1,
-            Direction::Up => head.1 -= 1,
-            Direction::Down => head.1 += 1,
+            Direction::Left => 
+              if head.0 > 0 {
+                head.0 -= 1;
+              } else {
+                head.0 = cols - 1;
+              },
+            Direction::Right =>
+            if head.0 < cols-1 {
+              head.0 += 1;
+            } else {
+              head.0 = 0
+            },
+            Direction::Up =>
+            if head.1 > 0 {
+              head.1 -= 1;
+            } else {
+              head.1 = rows-1
+            },
+            Direction::Down =>
+            if head.1 < rows-1 {
+              head.1 += 1;
+            } else {
+              head.1 = 0
+            },
         }
 
         // If updated snake collides with itself, fail update.
@@ -204,20 +216,6 @@ impl Food {
   }
 }
 
-// Create a new game and run it.
-fn create_game(cols: u32, rows: u32, cell_size: u32) -> Game {
-  let opengl = OpenGL::V3_2;
-
-  Game::new(
-    GlGraphics::new(opengl),
-    Snake {body: LinkedList::from_iter((vec![(rows/2, rows/2), (cols/2+1,cols/2)]).into_iter()), direction: Direction::Up},
-    rows,
-    cols,
-    /* just_ate= */ false,
-    cell_size,
-    0)
-}
-
 fn main() {
     let opengl = OpenGL::V3_2;
 
@@ -234,12 +232,18 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut game: Game = create_game(COLS, ROWS, CELL_SIZE);
+    // Create a new game and run it.
+    let mut game = Game::new(
+        GlGraphics::new(opengl),
+        Snake {body: LinkedList::from_iter((vec![(ROWS/2, ROWS/2), (COLS/2+1,COLS/2)]).into_iter()), direction: Direction::Up},
+        ROWS,
+        COLS,
+        /* just_ate= */ false,
+        CELL_SIZE,
+        0);
     let mut event_settings = EventSettings::new();
     event_settings.ups = 8;
     let mut events = Events::new(event_settings);
-    let mut lives = 3;
-    let mut total_score = 0;
     while let Some(e) = events.next(&mut window) {
         if let Some(args) = e.render_args() {
             game.render(&args);
@@ -247,15 +251,8 @@ fn main() {
 
         if let Some(_args) = e.update_args() {
             if !game.update() {
-              lives -= 1;
-              if lives == 0 {
-                println!("Game Over! score is: {}", total_score);
+                println!("Game Over! score is: {}", game.score);
                 break;
-              }
-              total_score += game.score;
-              println!("Careful! {} lives left, current score is {}", lives, total_score);
-              drop(game);
-              game = create_game(COLS, ROWS, CELL_SIZE);
             }
         }
 
